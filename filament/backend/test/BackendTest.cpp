@@ -188,7 +188,7 @@ void BackendTest::readPixelsAndAssertHash(const char* testName, size_t width, si
 #endif
                 }
 
-                // Hash the contents of the buffer and check that they match.
+                // ExpectedHash the contents of the buffer and check that they match.
                 uint32_t hash = utils::hash::murmur3((const uint32_t*) buffer, size / 4, 0);
                 ASSERT_EQ(hash, c->expectedHash) << c->name << " failed: hashes do not match." << std::endl;
 
