@@ -16,6 +16,7 @@
 
 #include "BackendTest.h"
 
+#include "ImageExpectations.h"
 #include "Lifetimes.h"
 #include "ShaderGenerator.h"
 #include "TrianglePrimitive.h"
@@ -60,36 +61,6 @@ struct MaterialParams {
     float4 color;
     float4 scale;
 };
-
-struct ScreenshotParams {
-    int width;
-    int height;
-    const char* filename;
-    uint32_t pixelHashResult;
-};
-
-#ifdef FILAMENT_IOS
-static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt, ScreenshotParams* params) {}
-#else
-static void dumpScreenshot(DriverApi& dapi, Handle<HwRenderTarget> rt, ScreenshotParams* params) {
-    using namespace image;
-    const size_t size = params->width * params->height * 4;
-    void* buffer = calloc(1, size);
-    auto cb = [](void* buffer, size_t size, void* user) {
-        ScreenshotParams* params = (ScreenshotParams*) user;
-        int w = params->width, h = params->height;
-        const uint32_t* texels = (uint32_t*) buffer;
-        params->pixelHashResult = utils::hash::murmur3(texels, size / 4, 0);
-        LinearImage image(w, h, 4);
-        image = toLinearWithAlpha<uint8_t>(w, h, w * 4, (uint8_t*) buffer);
-        std::ofstream pngstrm(params->filename, std::ios::binary | std::ios::trunc);
-        ImageEncoder::encode(pngstrm, ImageEncoder::Format::PNG, image, "", params->filename);
-    };
-    PixelBufferDescriptor pb(buffer, size, PixelDataFormat::RGBA, PixelDataType::UBYTE, cb,
-            (void*) params);
-    dapi.readPixels(rt, 0, 0, params->width, params->height, std::move(pb));
-}
-#endif
 
 static void uploadUniforms(DriverApi& dapi, Handle<HwBufferObject> ubh, MaterialParams params) {
     MaterialParams* tmp = new MaterialParams(params);
@@ -250,6 +221,8 @@ TEST_F(BackendTest, ColorMagnify) {
         RenderFrame frame(api);
         api.commit(swapChain);
     }
+
+    ImageExpectations expectations(api);
 
     // Grab a screenshot.
     ScreenshotParams params { kDstTexWidth, kDstTexHeight, "ColorMagnify.png" };
